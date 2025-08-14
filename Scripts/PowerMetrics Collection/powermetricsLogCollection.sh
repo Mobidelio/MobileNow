@@ -38,7 +38,7 @@
 # Define variables
 sampleInterval="30"                                       # Interval for taking samples in seconds
 runningTime="1"                                           # Total running time in hours
-powermetricsDirectory="/Libray/Mobidelio/PowerMetrics"    # Directory where script saves powermetrics results
+workingDirectory="/Library/Mobidelio/PowerMetrics"   # Directory where script saves powermetrics results
 
 sampler="tasks"                                           # tasks,battery,network,disk,int_sources,devices,interrupts,cpu_power,thermal,sfi,gpu_power,gpu_agpm_stats,smc,nvme_ssd,io_throttle_ssd
 bufferSize="1"                                            # 0=None | 1=Line
@@ -47,16 +47,37 @@ sampleCount="1"                                           # 0=infinite
 powerAverage="1"                                          # Display poweravg every N samples (0=disabled) [default: 10]
 
 
-
-
 #
-# Script code
+# Begin Script
+
+# Convert duration from hours to seconds
+durationSeconds=$((runningTime * 3600))
+
+# Capture the start time in seconds since epoch
+startTime=$(date +%s)
+
+# Calculate the end time
+cutOffTime=$((startTime + durationSeconds))
+
+
+
+# Check if the working directory already exists
+if [ -d "$workingDirectory" ]; then
+    # Already created
+    echo "$(date) | Log directory already exists - $workingDirectory"
+else
+    # Creating Working directory
+    echo "$(date) | creating log directory - $workingDirectory"
+    mkdir -p "$workingDirectory"
+fi
 
 # Run powermetrics
-while true
-    do
-        /usr/bin/powermetrics -b "$bufferSize" -n "$sampleCount" -s "$sampler" --show-process-energy --show-process-io | sed -l "s/^/$(date +%Y-%m-%dT%H:%M:%S" "%Z) /" >> "$powermetricsDirectory/$(date +%y-%m-%d-powermetrics.log)"
+while [ "$(date +%s)" -lt "$cutOffTime" ]; do
+        /usr/bin/powermetrics -b "$bufferSize" -n "$sampleCount" -s "$sampler" --show-process-energy --show-process-io | sed -l "s/^/$(date +%Y-%m-%dT%H:%M:%S" "%Z) /" >> "$workingDirectory/$(date +%y-%m-%d-powermetrics.log)"
         sleep "$sampleInterval"
 done
+
+# Unload LaunchDaemon
+
 
 exit 0
