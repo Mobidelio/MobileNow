@@ -38,7 +38,7 @@
 # Define variables
 sampleInterval="30"                                       # Interval for taking samples in seconds
 runningTime="1"                                           # Total running time in hours
-workingDirectory="/Library/Mobidelio/PowerMetrics"   # Directory where script saves powermetrics results
+workingDirectory="/Library/Mobidelio/Powermetrics"   # Directory where script saves powermetrics results
 
 sampler="tasks"                                           # tasks,battery,network,disk,int_sources,devices,interrupts,cpu_power,thermal,sfi,gpu_power,gpu_agpm_stats,smc,nvme_ssd,io_throttle_ssd
 bufferSize="1"                                            # 0=None | 1=Line
