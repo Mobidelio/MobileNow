@@ -9,12 +9,12 @@
 	<key>LowPriorityBackgroundIO</key>
 	<true/>
 	<key>Program</key>
-	<string>/Library/Mobidelio/PowerMetrics/powermetrics-logger.sh</string>
+	<string>/Library/Mobidelio/Powermetrics/powermetrics-logger.sh</string>
 	<key>RunAtLoad</key>
 	<true/>
 	<key>StandardErrorPath</key>
-	<string>/Library/Mobidelio/PowerMetrics/powermetrics-logger.launch.err</string>
+	<string>/Library/Mobidelio/Powermetrics/powermetrics-logger.launch.err</string>
 	<key>StandardOutPath</key>
-	<string>/Library/Mobidelio/PowerMetrics/powermetrics-logger.launch.out</string>
+	<string>/Library/Mobidelio/Powermetrics/powermetrics-logger.launch.out</string>
 </dict>
 </plist>
