@@ -36,15 +36,15 @@
 #########################################################################################################
 
 # Define variables
-sampleInterval="30"                                       # Interval for taking samples in seconds
-runningTime="1"                                           # Total running time in hours
-workingDirectory="/Library/Mobidelio/Powermetrics"   # Directory where script saves powermetrics results
+sampleInterval="30"                                           # Interval for taking samples in seconds
+runningTime="1"                                               # Total running time in hours
+workingDirectory="/Library/Mobidelio/Powermetrics/telemetry"  # Directory where script saves powermetrics results
 
-sampler="tasks"                                           # tasks,battery,network,disk,int_sources,devices,interrupts,cpu_power,thermal,sfi,gpu_power,gpu_agpm_stats,smc,nvme_ssd,io_throttle_ssd
-bufferSize="1"                                            # 0=None | 1=Line
-sampleInterval="0"                                        # 0=disabled | default=5000ms
-sampleCount="1"                                           # 0=infinite
-powerAverage="1"                                          # Display poweravg every N samples (0=disabled) [default: 10]
+sampler="tasks"                                               # tasks,battery,network,disk,int_sources,devices,interrupts,cpu_power,thermal,sfi,gpu_power,gpu_agpm_stats,smc,nvme_ssd,io_throttle_ssd
+bufferSize="1"                                                # 0=None | 1=Line
+sampleInterval="0"                                            # 0=disabled | default=5000ms
+sampleCount="1"                                               # 0=infinite
+powerAverage="1"                                              # Display poweravg every N samples (0=disabled) [default: 10]
 
 
 #
