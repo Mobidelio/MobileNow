@@ -1,57 +1,48 @@
 #!/bin/bash
 
 #########################################################################################################
-# License Information
-#
-# IMPORTANT:  This software is supplied to you by AgilMobility360 in
+# IMPORTANT:  This software is supplied to you by Mobidelio in
 # consideration of your agreement to the following terms, and your use, installation,
-# modification or redistribution of this AgileMobility360 software constitutes acceptance of these
-# terms.  If you do not agree with these terms, please do not use or install this AgileMobility360
+# modification or redistribution of this Mobidelio software constitutes acceptance of these
+# terms.  If you do not agree with these terms, please do not use or install this Mobidelio
 # software.
 #
-# This script is licensed to you as part of the MobileNow Management subscription. AgileMobility360
+# This script is licensed to you as part of the MobileNow Management subscription. Mobidelio
 # grants you a non-transferable, non-exclusive license to use this script for the duration of the
-# subscription. If you'd like updates or support sign up at https://www.agilemobility360.com or
-# email support@mobilenow.mobi for more details
+# subscription. If you'd like updates or support sign up at https://www.mobidelio.com or
+# email getsupport@mobidelio.com for more details
 #
 # You SHOULD NOT redistribute this source code with or without modification.
 #
-# The AgileMobility360 Software is provided by AgileMobility360 on an "AS IS" basis.  AgileMobility360
+# The Mobidelio Software is provided by Mobidelio on an "AS IS" basis.  Mobidelio
 # MAKES NO WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION THE IMPLIED WARRANTIES OF
 # NON-INFRINGEMENT, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, REGARDING THE
-# AgileMobility360 SOFTWARE OR ITS USE AND OPERATION ALONE OR IN COMBINATION WITH YOUR PRODUCTS.
+# Mobidelio SOFTWARE OR ITS USE AND OPERATION ALONE OR IN COMBINATION WITH YOUR PRODUCTS.
 #
-# IN NO EVENT SHALL AgileMobility360 BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL OR CONSEQUENTIAL
+# IN NO EVENT SHALL Mobidelio BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL OR CONSEQUENTIAL
 # DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
 # OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) ARISING IN ANY WAY OUT OF THE USE,
-# REPRODUCTION, MODIFICATION AND/OR DISTRIBUTION OF THE AgileMobility360 SOFTWARE, HOWEVER CAUSED AND
+# REPRODUCTION, MODIFICATION AND/OR DISTRIBUTION OF THE Mobidelio SOFTWARE, HOWEVER CAUSED AND
 # WHETHER UNDER THEORY OF CONTRACT, TORT (INCLUDING NEGLIGENCE), STRICT LIABILITY OR
-# OTHERWISE, EVEN IF AgileMobility360 HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# OTHERWISE, EVEN IF Mobidelio HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 #########################################################################################################
 
-# Code by Professional Services, AgileMobility360
-# Created - Jan 14, 2021
-# Updated - <Insert update date here> - <Insert update description here>
-# Supports: macOS 10.13.x, macOS 10.14.x, macOS 10.15.x, macOS 11.x
+# Copyright Mobidelio 2025. All Rights Reserved.
+# Provide Feedback: feedback@mobidelio.com
 
-# General Information
-# This script can be used within a policy in Jamf Pro to collect support and metrics logs from a
-# Mac
-# NOTE: API USER must have access to read Jamf Pro Activation Code for validation
+#########################################################################################################
+# Script uses powermetrics tool to capture performance data from a Mac computer.
+#########################################################################################################
 
-#
-# Script Variables
-# <------------------------ Insert your script variables below ------------------------>
-
-# Jamf Pro tenant variables
+# Define variables
 jamfProURL="$4"
 jamfProUser="$5"
 jamfProPassEnc="$6"
 salt="$7"
 passPhrase="$8"
 
-jamfProPass=$(echo "$jamfProPassEnc" | /usr/bin/openssl enc -aes256 -d -a -A -S "$salt" -k "$passPhrase")
+#jamfProPass=$(echo "$jamfProPassEnc" | /usr/bin/openssl enc -aes256 -d -a -A -S "$salt" -k "$passPhrase")
 
 # Commands to collect information
 # This section includes all commands that can produce useful information from the Mac
@@ -93,7 +84,7 @@ logsArray=(
 "/private/var/log/wifi.log"
 )
 
-# System Variables
+# System variables
 mySerial=$(system_profiler SPHardwareDataType | grep Serial |  awk '{print $NF}')
 currentUser=$(stat -f%Su /dev/console)
 compHostName=$(scutil --get LocalHostName)
@@ -103,7 +94,7 @@ sw_name=$(sw_vers -productName)
 osMajor=$(/usr/bin/sw_vers -productVersion | awk -F . '{print $1}')
 osMinor=$(/usr/bin/sw_vers -productVersion | awk -F . '{print $2}')
 
-# Script Variables
+# Script variables
 tmpFolder="/private/var/tmp/edc"
 zipFileName="edc-$currentUser-$mySerial-$timeStamp.zip"
 
@@ -114,8 +105,7 @@ scriptLog="$tmpFolder/edc-$mySerial.log"
 microsoftLogs="/Library/Logs/Microsoft"
 
 #
-# Script Functions
-# <------------------------ Insert your script functions below ------------------------>
+# Script functions
 
 # This function will run through the commands array and execute each of the commands
 # to collect the output.
@@ -190,8 +180,7 @@ CleanUp() {
 }
 
 #
-# Core Script
-# <--------------------------- Insert your main code below ---------------------------->
+# Begin script
 
 # Checking if Jamf Pro Tenant is reachable before proceeding...
 httpResponseCode=$(curl --write-out '%{http_code}' --silent --output /dev/null -k -u "$jamfProUser":"$jamfProPass" "$jamfProURL/JSSResource/activationcode" )
