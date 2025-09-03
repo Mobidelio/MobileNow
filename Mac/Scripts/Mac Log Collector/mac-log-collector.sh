@@ -36,11 +36,7 @@
 #########################################################################################################
 
 # Define variables
-jamfProURL="$4"
-jamfProUser="$5"
-jamfProPassEnc="$6"
-salt="$7"
-passPhrase="$8"
+jamfProApiHash=$4
 
 #jamfProPass=$(echo "$jamfProPassEnc" | /usr/bin/openssl enc -aes256 -d -a -A -S "$salt" -k "$passPhrase")
 
@@ -85,7 +81,7 @@ logsArray=(
 )
 
 # System variables
-mySerial=$(system_profiler SPHardwareDataType | grep Serial |  awk '{print $NF}')
+computerSerial=$(system_profiler SPHardwareDataType | awk '/Serial Number/{print $4}')
 currentUser=$(stat -f%Su /dev/console)
 compHostName=$(scutil --get LocalHostName)
 timeStamp=$(date '+%Y-%m-%d-%H-%M-%S')
@@ -95,17 +91,59 @@ osMajor=$(/usr/bin/sw_vers -productVersion | awk -F . '{print $1}')
 osMinor=$(/usr/bin/sw_vers -productVersion | awk -F . '{print $2}')
 
 # Script variables
-tmpFolder="/private/var/tmp/edc"
-zipFileName="edc-$currentUser-$mySerial-$timeStamp.zip"
+tmpFolder=$(mktemp -d /private/var/tmp/edc.XXXXX)
+zipFileName="edc-$currentUser-$computerSerial-$timeStamp.zip"
 
 # Log Collector Log
-scriptLog="$tmpFolder/edc-$mySerial.log"
+scriptLog="$tmpFolder/edc-$computerSerial.log"
 
 # Third Party Log Files
 microsoftLogs="/Library/Logs/Microsoft"
+adobeLogs="/Library/Logs/Adobe/Installers"
 
 #
 # Script functions
+
+# This functions gets the Jamf Pro url from the local configuration file
+getJamfURL() {
+jamfURL=$(defaults read /Library/Preferences/com.jamfsoftware.jamf.plist jss_url | sed 's/.$//')
+if [[ -z "$jamfURL" ]]; then
+    echo "Error: Jamf Pro Server URL not found in plist."
+    exit 1
+fi
+}
+
+# This function gets the Jamf Pro server bearer token
+getBearerToken() {
+echo "Getting bearer token from Jamf..."
+response=$(/usr/bin/curl -s --header "authorization: Basic ${jamfProApiHash}" "${jamfURL}/api/v1/auth/token" -X POST)
+if [[ $? -ne 0 ]]; then
+    echo "Error: Failed to get bearer token. Check your API credentials and URL."
+    exit 1
+fi
+bearerToken=$(echo "$response" | plutil -extract token raw -)
+if [[ -z "$bearerToken" ]]; then
+    echo "Error: Failed to extract bearer token from response."
+    exit 1
+fi
+tokenExpiration=$(echo "$response" | plutil -extract expires raw - | awk -F . '{print $1}')
+tokenExpirationEpoch=$(date -j -f "%Y-%m-%dT%T" "$tokenExpiration" +"%s")
+}
+
+# This function invalidates the current Jamf Pro server bearer token
+invalidateToken() {
+echo "Invalidating Jamf bearer token..."
+responseCode=$(curl -w "%{http_code}" -H "Authorization: Bearer ${bearerToken}" "$jamfURL/api/v1/auth/invalidate-token" -X POST -s -o /dev/null)
+if [[ ${responseCode} == 204 ]]; then
+    echo "Token successfully invalidated"
+    bearerToken=""
+    tokenExpirationEpoch="0"
+elif [[ ${responseCode} == 401 ]]; then
+    echo "Token already invalid"
+else
+    echo "An unknown error occurred invalidating the token"
+fi
+}
 
 # This function will run through the commands array and execute each of the commands
 # to collect the output.
@@ -171,6 +209,13 @@ if [ -d "$microsoftLogs" ]; then
 fi
 }
 
+adobeLogCapture() {
+echo "Collecting Adobe Install Logs..." >> "$scriptLog"
+if [ -d "$adobeLogs" ]; then
+    /bin/cp -Rp "$adobeLogs" "$tmpFolder/Adobe/"
+fi
+}
+
 # As the name implies, this function will clean up all temp files and directories
 # created by this script. This is done for security and privacy reasons.
 CleanUp() {
@@ -194,9 +239,6 @@ fi
 
 # Create temporary folder structure to collect data
 
-echo "Creating Temporary Folder Structure"
-/bin/mkdir -p "$tmpFolder"
-
 echo "Creating Collector log file"
 /usr/bin/touch "$scriptLog"
 
@@ -205,6 +247,9 @@ echo "Creating Logs folder"
 
 echo "Creating Microsoft logs folder"
 /bin/mkdir -p "$tmpFolder/Microsoft"
+
+echo "Creating Adobe logs folder"
+/bin/mkdir -p "$tmpFolder/Adobe"
 
 
 # Enterprise Data Capture Log Header
@@ -219,7 +264,7 @@ echo "---------------------------------Client Capture---------------------------
 echo "Current User: $currentUser" >> "$scriptLog"
 echo "Hostname: $compHostName" >> "$scriptLog"
 echo "Operating System: $sw_name $sw_vers" >> "$scriptLog"
-echo "Computer Serial: $mySerial" >> "$scriptLog"
+echo "Computer Serial: $computerSerial" >> "$scriptLog"
 printf "\n" >> "$scriptLog"
 
 # Call function to collect system profiler information
@@ -246,6 +291,10 @@ spinDumpCapture
 echo "Collecting Microsoft Logs"
 microsoftLogCapture
 
+# Call function to collect Adobe software logs
+echo "Collecting Adobe Logs"
+adobeLogCapture
+
 # Call function to collect performance metric samples
 echo "Collecting performance metrics samples"
 powermetricsCapture
@@ -263,18 +312,23 @@ printf "\n" >> "$scriptLog"
 echo "Zipping collected files" | tee -a "$scriptLog"
 zip -vr /private/var/tmp/"$zipFileName" "$tmpFolder"
 
-## Get user JAMF ID from MDM
-if [[ "$osMajor" -eq 11 ]]; then
-    jamfProID=$(curl -k -u "$jamfProUser":"$jamfProPass" "$jamfProURL/JSSResource/computers/serialnumber/$mySerial/subset/general" | xpath -e "//computer/general/id/text()" )
-elif [[ "$osMajor" -eq 10 && "$osMinor" -gt 12 ]]; then
-    jamfProID=$(curl -k -u "$jamfProUser":"$jamfProPass" "$jamfProURL/JSSResource/computers/serialnumber/$mySerial/subset/general" | xpath "//computer/general/id/text()" )
-fi
+# Get Jamf Pro URL from local configuration
+getJamfURL
 
-echo "Jamf Computer ID is $jamfProID" | tee -a "$scriptLog"
+# Get a bearer token to access Jamf Pro API
+getBearerToken
+
+## Get user computer Jamf ID from Jamf Pro
+computerID=$(/usr/bin/curl -X GET --header "Accept: text/xml" --header "Authorization: Bearer ${bearerToken}" --url "$jamfURL/JSSResource/computers/serialnumber/$computerSerial" | xmllint --xpath 'computer/general/id/text()' - )
+if [[ -z "$computerID" ]]; then
+    echo "Error: Unable to get computer ID."
+    exit 1
+fi
+echo "Jamf Computer ID is $computerID" | tee -a "$scriptLog"
 
 ## Upload zip file to MDM Console
 echo "Uploading zip file to tenant $jamfProURL"
-httpResponseCode=$(curl --write-out '%{http_code}' --silent --output /dev/null -k -u "$jamfProUser":"$jamfProPass" "$jamfProURL/JSSResource/fileuploads/computers/id/$jamfProID" -F "name=@/private/var/tmp/$zipFileName" -X POST)
+httpResponseCode=$(/usr/bin/curl --write-out '%{http_code}' -X POST -s --header "Accept: text/xml" --header "Authorization: Bearer ${bearerToken}" --url "${jamfURL}/JSSResource/fileuploads/computers/id/$computerID" -F "name=@/private/var/tmp/$zipFileName")
 
 echo "$httpResponseCode"
 
@@ -287,6 +341,9 @@ else
     echo "Error uploading log files." | tee -a "$scriptLog"
     exit 1
 fi
+
+# Invalidate the current bearer token
+invalidateToken
 
 ## Exit
 echo "Exiting gracefully..." | tee -a "$scriptLog"
