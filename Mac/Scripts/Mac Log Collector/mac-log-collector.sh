@@ -346,5 +346,6 @@ fi
 invalidateToken
 
 ## Exit
-echo "Exiting gracefully..." | tee -a "$scriptLog"
+echo "Exiting gracefully..."
+
 exit 0
